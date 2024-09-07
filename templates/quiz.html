@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <img src="{{ url_for('static', filename='logobg.png') }}" alt="Logo" class="header__logo">
+            <h1 class="header__title">Candidate Assessment Test (CAT)</h1>
+        </div>
+    </header>    
+
+    <div class="container">
+        <form action="/submit" method="post" class="quiz-form">
+            <div class="form-group">
+                <label for="name" class="form-label">Name:</label>
+                <input type="text" id="name" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="email" class="form-label">Email:</label>
+                <input type="email" id="email" name="email" class="form-input" required>
+            </div>
+            <ol class="questions-list">
+                {% for question in questions %}
+                <li class="question-item">
+                    <p class="question-text">{{ question['Question Text'] }}</p>
+                    <div class="options">
+                        <input type="radio" id="option1_{{ question['Question ID'] }}" name="answer_{{ question['Question ID'] }}" value="1" class="option-input">
+                        <label for="option1_{{ question['Question ID'] }}" class="option-label">{{ question['Option 1'] }}</label><br>
+                        <input type="radio" id="option2_{{ question['Question ID'] }}" name="answer_{{ question['Question ID'] }}" value="2" class="option-input">
+                        <label for="option2_{{ question['Question ID'] }}" class="option-label">{{ question['Option 2'] }}</label><br>
+                        <input type="radio" id="option3_{{ question['Question ID'] }}" name="answer_{{ question['Question ID'] }}" value="3" class="option-input">
+                        <label for="option3_{{ question['Question ID'] }}" class="option-label">{{ question['Option 3'] }}</label><br>
+                        <input type="radio" id="option4_{{ question['Question ID'] }}" name="answer_{{ question['Question ID'] }}" value="4" class="option-input">
+                        <label for="option4_{{ question['Question ID'] }}" class="option-label">{{ question['Option 4'] }}</label><br>
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+            <button type="submit" class="btn">Submit</button>
+        </form>
+    </div>
+</body>
+</html>

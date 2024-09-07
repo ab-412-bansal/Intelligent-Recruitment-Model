@@ -1,0 +1,13 @@
+Candidate Name,Job Category,Match Score,Experience
+Alice Johnson,Advocate,100.0,8
+Ayush,Health and fitness,40.0,Null
+Ayush,Blockchain,20.0,Null
+Ayush,Mechanical Engineer,20.0,Null
+Ayush,Sales,20.0,Null
+Harry,Mechanical Engineer,80.0,9
+Harry,Civil Engineer,20.0,9
+Jane Doe,Data Science,100.0,10
+John smith,Data Science,60.0,12
+John smith,Python Developer,40.0,12
+Tim David,Data Science,80.0,4
+Tim David,Python Developer,20.0,4

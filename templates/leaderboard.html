@@ -1,0 +1,41 @@
+<!-- leaderboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='leaderboard.css') }}">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <img src="{{ url_for('static', filename='logobg.png') }}" alt="Logo" class="header__logo">
+            <h1 class="header__title">Leaderboard</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <table class="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ranked_candidate in candidates %}
+                <tr>
+                    <td>{{ ranked_candidate['rank'] }}</td>
+                    <td>{{ ranked_candidate['candidate'].name }}</td>
+                    <td>{{ ranked_candidate['candidate'].email }}</td>
+                    <td>{{ (ranked_candidate['candidate'].score / 20) * 100 }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

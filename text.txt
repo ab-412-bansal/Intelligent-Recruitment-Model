@@ -1,0 +1,242 @@
+import pandas as pd
+import plotly.express as px
+import re
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
+import string
+from nltk.corpus import stopwords
+df = pd.read_csv('UpdatedResumeDataSet.csv')
+
+df.head()
+df.shape
+df.info()
+print(df.isnull().sum())
+print(df.drop_duplicates(subset="Resume", keep='first', inplace=True))
+
+
+fig = px.histogram(df, x="Category", title="Distribution of Job Categories", category_orders={"Category": df["Category"].value_counts().index})
+
+fig
+series = df['Category'].value_counts()
+
+df_result = pd.DataFrame(series)
+
+df_result = df_result.reset_index()  
+
+df_result.columns = ['Category', 'Total']
+
+print(df_result)
+df_result_part = df_result.head(21)
+print(df_result_part)
+fig = px.pie(df_result_part,
+                 values='Total',
+                 names='Category')
+
+fig
+
+def cleanResume(resumeText):
+    resumeText = re.sub('http\S+\s*', ' ', resumeText)  # remove URLs
+    resumeText = re.sub('RT|cc', ' ', resumeText)  # remove RT and cc
+    resumeText = re.sub('#\S+', '', resumeText)  # remove hashtags
+    resumeText = re.sub('@\S+', '  ', resumeText)  # remove mentions
+    resumeText = re.sub('[%s]' % re.escape("""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""), ' ', resumeText)  # remove punctuations
+    resumeText = re.sub(r'[^\x00-\x7f]',r' ', resumeText) 
+    resumeText = re.sub('\s+', ' ', resumeText)  # remove extra whitespace
+    return resumeText
+    
+df['cleaned_resume'] = df.Resume.apply(lambda x: cleanResume(x))
+df.head()
+oneSetOfStopWords = set(stopwords.words('english')+['``',"''"])
+totalWords =[]
+Sentences = df['Resume'].values
+cleanedSentences = ""
+for records in Sentences:
+    cleanedText = cleanResume(records)
+    cleanedSentences += cleanedText
+    requiredWords = nltk.word_tokenize(cleanedText)
+    for word in requiredWords:
+        if word not in oneSetOfStopWords and word not in string.punctuation:
+            totalWords.append(word)
+    
+wordfreqdist = nltk.FreqDist(totalWords)
+mostcommon = wordfreqdist.most_common(50)
+print(mostcommon)
+from sklearn.preprocessing import LabelEncoder
+
+var_mod = ['Category']
+le = LabelEncoder()
+for i in var_mod:
+    df[i] = le.fit_transform(df[i])
+
+df.Category.value_counts()
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+#from scipy.sparse import hstack
+
+requiredText = df['cleaned_resume'].values
+requiredTarget = df['Category'].values
+
+word_vectorizer = TfidfVectorizer(
+    sublinear_tf=True,
+    stop_words='english')
+word_vectorizer.fit(requiredText)
+WordFeatures = word_vectorizer.transform(requiredText)
+
+print ("Feature completed .....")
+X_train,X_test,y_train,y_test = train_test_split(WordFeatures,requiredTarget,random_state=1, test_size=0.2,shuffle=True, stratify=requiredTarget)
+print(X_train.shape)
+print(X_test.shape)
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn import metrics
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+clf = OneVsRestClassifier(KNeighborsClassifier())
+clf.fit(X_train, y_train)
+prediction = clf.predict(X_test)
+print('Accuracy of KNeighbors Classifier on training: {:.2f}'.format(clf.score(X_train, y_train)))
+print('Accuracy of KNeighbors Classifier on test:     {:.2f}'.format(clf.score(X_test, y_test)))
+print("\n Classification report for classifier %s:\n%s\n" % (clf, metrics.classification_report(y_test, prediction)))
+le.classes_
+
+##Screening
+import pandas as pd
+import glob
+import os
+import docx
+import re
+from datetime import datetime
+
+def read_docx(file_path):
+    doc = docx.Document(file_path)
+    fullText = []
+    for para in doc.paragraphs:
+        fullText.append(para.text)
+    return '\n'.join(fullText)
+
+def extract_overall_experience_years(resume_text):
+    """
+    Calculates overall experience years from the resume text, accounting for overlapping jobs.
+    """
+    date_pattern = r'((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)?\s*\d{4})\s*-\s*((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)?\s*(?:\d{4}|Present))'
+    matches = re.findall(date_pattern, resume_text, re.IGNORECASE)
+
+    if not matches:
+        return "Null"  # Return "Null" if no dates found
+
+    min_start_year = datetime.now().year
+    max_end_year = 0
+
+    for start, end in matches:
+        start_year = int(re.search(r'\d{4}', start).group())
+        end_year = datetime.now().year if "Present" in end else int(re.search(r'\d{4}', end).group())
+
+        if start_year < min_start_year:
+            min_start_year = start_year
+        if end_year > max_end_year:
+            max_end_year = end_year
+
+    total_experience = max_end_year - min_start_year
+    return total_experience
+
+def process_resumes(resume_paths, model, vectorizer, le, threshold=0.1):
+    results = []
+
+    for resume_path in resume_paths:
+        resume_text = read_docx(resume_path)
+        candidate_name = os.path.splitext(os.path.basename(resume_path))[0]
+        cleaned_resume = cleanResume(resume_text)  # Assuming you have a cleanResume function
+        
+        resume_vec = vectorizer.transform([cleaned_resume])
+        pred_proba = model.predict_proba(resume_vec)[0]
+        
+        proba_category_mapping = [(le.inverse_transform([i])[0], proba) for i, proba in enumerate(pred_proba)]
+        proba_category_mapping.sort(key=lambda x: x[1], reverse=True)
+        
+        suggested_categories = [(category, proba*100) for category, proba in proba_category_mapping if proba >= threshold]
+        
+        # Extract overall experience
+        overall_experience = extract_overall_experience_years(resume_text)
+        
+        results.append({
+            'Candidate Name': candidate_name,
+            'Job Categories': suggested_categories,
+            'Experience': overall_experience  # Add experience to the results
+        })
+    
+    df_results = pd.DataFrame(results)
+    summary_table = pd.DataFrame(columns=['Candidate Name', 'Job Category', 'Match Score', 'Experience'])
+
+    for _, row in df_results.iterrows():
+        candidate_name = row['Candidate Name']
+        categories = row['Job Categories']
+        experience = row['Experience']
+        
+        for category, score in categories:
+            new_row = pd.DataFrame({
+                'Candidate Name': [candidate_name], 
+                'Job Category': [category], 
+                'Match Score': [score],
+                'Experience': [experience]  # Add experience to each row
+            })
+            summary_table = pd.concat([summary_table, new_row], ignore_index=True)
+    
+    return summary_table
+
+# Assuming the necessary variables (clf, word_vectorizer, le) are defined elsewhere in your code.
+resume_paths = glob.glob('./*.docx')
+result_table = process_resumes(resume_paths, clf, word_vectorizer, le, threshold=0.1)
+excelfile = "resume_classification_results.xlsx"
+
+# Save the DataFrame to an Excel file
+# Make sure to specify the engine as 'openpyxl' if you have other Excel writers installed
+result_table.to_excel(excelfile, index=False, engine='openpyxl')
+
+print(result_table)
+print(f"Results saved to {excelfile}.")
+
+from tabulate import tabulate
+
+def print_results_by_category(df, le):
+    # Print the list of available job categories only once at the beginning
+    print("\nAvailable job categories:")
+    for category in le.classes_:
+        print("-", category)
+    print("Enter 'exit' to stop.")
+    
+    while True:
+        # Prompt user to specify the job category
+        target_category = input("\nEnter the job category you are interested in or 'exit' to stop: ")
+        
+        # Check for exit condition
+        if target_category.lower() == 'exit':
+            break
+        
+        if target_category not in le.classes_:
+            print("Invalid job category. Please try again.")
+            continue
+
+        # Filter DataFrame for the chosen category
+        category_df = df[df['Job Category'] == target_category]
+        
+        # Prepare data for tabulate
+        headers = ['Candidate Name', 'Match Score', 'Experience (Years)']
+        # Include the experience data in the listing
+        data = category_df[['Candidate Name', 'Match Score', 'Experience']].values.tolist()
+        
+        # Calculate the width of the table
+        table_width = sum(len(str(header)) for header in headers) + len(headers) * 3 + 10  # Adjust for spacing and column
+        
+        # Print table header with category name centered
+        print("\n" + target_category.center(table_width) + "\n")
+        
+        # Print table using tabulate
+        if not data:
+            print(f"No candidates found for {target_category}.")
+        else:
+            print(tabulate(data, headers=headers, tablefmt="pretty"))
+
+# Assuming 'result_table' is your DataFrame and 'le' is your LabelEncoder
+# Ensure your 'result_table' DataFrame now includes an 'Experience' column, as modified in your earlier request
+print_results_by_category(result_table, le)
+

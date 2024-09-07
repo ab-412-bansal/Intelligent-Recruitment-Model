@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Uploaded</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='submit.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="message">
+            {% if type == 'success' %}
+            <img src="{{ url_for('static',filename='tick.png')}}" alt="Tick Image" class="tick-image">
+            {% elif type == 'error' %}
+            <img src="{{ url_for('static',filename='cross.jpg')}}" alt="Cross Image" class="tick-image">
+            {% endif %}
+            <h2>{{ mes }}</h2>
+        </div>
+    </div>
+</body>
+</html>
